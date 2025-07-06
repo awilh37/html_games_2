@@ -115,36 +115,83 @@
         const dinoSkinSelect = document.getElementById('dinoSkin');
         const cactiSkinSelect = document.getElementById('cactiSkin');
 
-        // --- Asset Management (Conceptual) ---
-        // In a real scenario, you'd load images here:
-        // const dinoImages = {
-        //     og: loadImage('path/to/og_dino.png'),
-        //     unicorn: loadImage('path/to/unicorn_dino.png'),
-        //     chicken: loadImage('path/to/chicken.png'),
-        //     ghost: loadImage('path/to/ghost.png')
-        // };
-        // const cactiImages = {
-        //     og: loadImage('path/to/og_cactus.png'),
-        //     pacman: loadImage('path/to/pacman_power_pellet_cactus.png')
-        // };
-        // const personImage = loadImage('path/to/person_throwing.png');
-        // const guitarImage = loadImage('path/to/guitar.png');
+        // --- Asset Management ---
+        const ASSET_PATH = 'awilh37/assets/'; // Define a base path for assets
 
-        // For now, we'll use color codes for skins
+        // Image definitions - paths will be used to load images
         const dinoSkins = {
-            og: { color: 'darkgreen', width: 20, height: 40 },
-            unicorn: { color: 'purple', width: 25, height: 45 }, // Slightly different size
-            chicken: { color: 'white', width: 30, height: 30 },
-            ghost: { color: 'lightblue', width: 30, height: 30 }
+            og: { src: ASSET_PATH + 'og_dino.png', width: 20, height: 40 },
+            unicorn: { src: ASSET_PATH + 'unicorn_dino.png', width: 25, height: 45 },
+            chicken: { src: ASSET_PATH + 'chicken.png', width: 30, height: 30 },
+            ghost: { src: ASSET_PATH + 'ghost.png', width: 30, height: 30 }
         };
 
         const cactiSkins = {
-            og: { color: 'green', baseWidth: 15, minHeight: 30, maxHeight: 50 },
-            pacman: { color: 'yellow', baseWidth: 25, minHeight: 25, maxHeight: 25 } // Pacman pellet is more uniform
+            og: { src: ASSET_PATH + 'og_cactus.png', baseWidth: 15, minHeight: 30, maxHeight: 50 },
+            pacman: { src: ASSET_PATH + 'pacman_power_pellet.png', baseWidth: 25, minHeight: 25, maxHeight: 25 } // Pacman pellet is more uniform
+        };
+        
+        const miscImageSources = {
+            person: ASSET_PATH + 'person.png',
+            guitar: ASSET_PATH + 'guitar.png'
         };
 
-        let currentDinoSkin = dinoSkins.og;
-        let currentCactiSkin = cactiSkins.og;
+        // Objects to store loaded Image instances
+        let dinoImageObjects = {};
+        let cactiImageObjects = {};
+        let miscImageObjects = {};
+        let allImagesLoaded = false;
+
+        function loadImage(src) {
+            return new Promise((resolve, reject) => {
+                const img = new Image();
+                img.onload = () => resolve(img);
+                img.onerror = reject;
+                img.src = src;
+            });
+        }
+
+        async function loadAllGameImages() {
+            try {
+                // Load dino skins
+                for (const key in dinoSkins) {
+                    dinoImageObjects[key] = await loadImage(dinoSkins[key].src);
+                }
+                // Load cacti skins
+                for (const key in cactiSkins) {
+                    cactiImageObjects[key] = await loadImage(cactiSkins[key].src);
+                }
+                // Load misc images
+                 miscImageObjects['person'] = await loadImage(miscImageSources.person);
+                 miscImageObjects['guitar'] = await loadImage(miscImageSources.guitar);
+
+                console.log("All images loaded successfully.");
+                allImagesLoaded = true;
+                // Initial draw and prompt can now happen
+                currentDinoSkinDetails = dinoSkins[dinoSkinSelect.value]; // Update details
+                dino.reset(); // Reset based on initial skin
+                dino.draw();
+                ctx.font = "20px Arial";
+                ctx.fillStyle = "black";
+                ctx.textAlign = "center";
+                ctx.fillText("Press 'Start Game', Space, or Click to begin", canvas.width/2, canvas.height/2);
+                startGameButton.disabled = false; // Enable start button
+
+            } catch (error) {
+                console.error("Error loading images:", error);
+                ctx.font = "16px Arial";
+                ctx.fillStyle = "red";
+                ctx.textAlign = "center";
+                ctx.fillText("Error loading images. Check console and paths.", canvas.width/2, canvas.height/2 - 20);
+                ctx.fillText("Expected in awilh37/assets/: og_dino.png, unicorn_dino.png, etc.", canvas.width/2, canvas.height/2);
+                startGameButton.disabled = true;
+            }
+        }
+
+
+        let currentDinoSkinDetails = dinoSkins.og; // Stores dimensions and src
+        let currentCactiSkinDetails = cactiSkins.og; // Stores dimensions and src
+
 
         let score = 0;
         let gameSpeed = 5;
@@ -154,20 +201,23 @@
         // Player (Dino)
         const dino = {
             x: 50,
-            y: canvas.height - currentDinoSkin.height, // Initial y position based on skin
-            width: currentDinoSkin.width,
-            height: currentDinoSkin.height,
+            y: canvas.height - currentDinoSkinDetails.height, // Initial y position based on skin
+            width: currentDinoSkinDetails.width,
+            height: currentDinoSkinDetails.height,
             dy: 0, // Change in y per frame
             gravity: 1,
             jumpPower: 15,
             isJumping: false,
-            groundY: canvas.height - currentDinoSkin.height, // Ground level y
+            groundY: canvas.height - currentDinoSkinDetails.height, // Ground level y
 
             draw() {
-                // Placeholder: draw with current skin color and dimensions
-                // Replace this with actual image drawing: ctx.drawImage(dinoImages[dinoSkinSelect.value], this.x, this.y, this.width, this.height);
-                ctx.fillStyle = currentDinoSkin.color;
-                ctx.fillRect(this.x, this.y, this.width, this.height);
+                if (allImagesLoaded && dinoImageObjects[dinoSkinSelect.value]) {
+                    ctx.drawImage(dinoImageObjects[dinoSkinSelect.value], this.x, this.y, this.width, this.height);
+                } else {
+                    // Fallback to colored box if image not loaded
+                    ctx.fillStyle = currentDinoSkinDetails.color || 'grey'; // Use defined color or grey
+                    ctx.fillRect(this.x, this.y, this.width, this.height);
+                }
             },
             jump() {
                 if (!this.isJumping) {
@@ -190,8 +240,8 @@
                 }
             },
             reset() { // Reset dino properties based on current skin
-                this.width = currentDinoSkin.width;
-                this.height = currentDinoSkin.height;
+                this.width = currentDinoSkinDetails.width;
+                this.height = currentDinoSkinDetails.height;
                 this.groundY = canvas.height - this.height;
                 this.y = this.groundY;
                 this.isJumping = false;
@@ -203,17 +253,17 @@
         let obstacles = [];
         let projectiles = []; // For guitars thrown by people
 
-        const obstacleBaseWidth = 20; // Base width, skin can modify
-        const personObstacle = {
-            width: 30,
-            height: 50,
+        // const obstacleBaseWidth = 20; // Base width, skin can modify. Now taken from skin object.
+        const personObstacleDetails = { // Renamed to avoid confusion with 'person' skin key
+            width: 30, // Default width, can be overridden by image if needed
+            height: 50, // Default height
             throwInterval: 150, // Frames between throws
-            color: 'brown', // Placeholder for person
+            // color: 'brown', // Placeholder for person - Now uses image
             guitar: {
-                width: 25,
-                height: 10,
+                width: 25, // Default width
+                height: 10, // Default height
                 speed: 7, // Faster than gameSpeed
-                color: 'saddlebrown' // Placeholder for guitar
+                // color: 'saddlebrown' // Placeholder for guitar - Now uses image
             }
         };
 
@@ -232,9 +282,10 @@
         function spawnObstacle() {
             const randomType = Math.random();
             let newObstacle;
+            const selectedCactiSkinKey = cactiSkinSelect.value;
 
             if (randomType < 0.6) { // 60% chance for cactus
-                const skinProps = currentCactiSkin;
+                const skinProps = currentCactiSkinDetails;
                 const height = Math.random() * (skinProps.maxHeight - skinProps.minHeight) + skinProps.minHeight;
                 newObstacle = {
                     type: 'cactus',
@@ -242,11 +293,14 @@
                     y: canvas.height - height,
                     width: skinProps.baseWidth + (Math.random() * 10 - 5), // Slight width variation
                     height: height,
-                    skin: currentCactiSkin,
+                    skinKey: selectedCactiSkinKey, // Store key to access loaded image
                     draw() {
-                        // Placeholder: ctx.drawImage(cactiImages[cactiSkinSelect.value], this.x, this.y, this.width, this.height);
-                        ctx.fillStyle = this.skin.color;
-                        ctx.fillRect(this.x, this.y, this.width, this.height);
+                        if (allImagesLoaded && cactiImageObjects[this.skinKey]) {
+                            ctx.drawImage(cactiImageObjects[this.skinKey], this.x, this.y, this.width, this.height);
+                        } else {
+                            ctx.fillStyle = skinProps.color || 'green'; // Fallback
+                            ctx.fillRect(this.x, this.y, this.width, this.height);
+                        }
                     },
                     update() {
                         this.x -= gameSpeed;
@@ -256,19 +310,22 @@
                 newObstacle = {
                     type: 'person',
                     x: canvas.width,
-                    y: canvas.height - personObstacle.height,
-                    width: personObstacle.width,
-                    height: personObstacle.height,
+                    y: canvas.height - personObstacleDetails.height,
+                    width: personObstacleDetails.width,
+                    height: personObstacleDetails.height,
                     throwTimer: 0,
                     draw() {
-                        // Placeholder: ctx.drawImage(personImage, this.x, this.y, this.width, this.height);
-                        ctx.fillStyle = personObstacle.color;
-                        ctx.fillRect(this.x, this.y, this.width, this.height);
+                        if (allImagesLoaded && miscImageObjects.person) {
+                            ctx.drawImage(miscImageObjects.person, this.x, this.y, this.width, this.height);
+                        } else {
+                            ctx.fillStyle = 'brown'; // Fallback
+                            ctx.fillRect(this.x, this.y, this.width, this.height);
+                        }
                     },
                     update() {
                         this.x -= gameSpeed;
                         this.throwTimer++;
-                        if (this.throwTimer % personObstacle.throwInterval === 0) {
+                        if (this.throwTimer % personObstacleDetails.throwInterval === 0) {
                             spawnProjectile(this.x, this.y + this.height / 3); // Throw from person's mid-upper body
                         }
                     }
@@ -282,15 +339,18 @@
             projectiles.push({
                 x: x,
                 y: y,
-                width: personObstacle.guitar.width,
-                height: personObstacle.guitar.height,
+                width: personObstacleDetails.guitar.width,
+                height: personObstacleDetails.guitar.height,
                 draw() {
-                    // Placeholder: ctx.drawImage(guitarImage, this.x, this.y, this.width, this.height);
-                    ctx.fillStyle = personObstacle.guitar.color;
-                    ctx.fillRect(this.x, this.y, this.width, this.height);
+                    if (allImagesLoaded && miscImageObjects.guitar) {
+                        ctx.drawImage(miscImageObjects.guitar, this.x, this.y, this.width, this.height);
+                    } else {
+                        ctx.fillStyle = 'saddlebrown'; // Fallback
+                        ctx.fillRect(this.x, this.y, this.width, this.height);
+                    }
                 },
                 update() {
-                    this.x -= personObstacle.guitar.speed; // Guitar has its own speed
+                    this.x -= personObstacleDetails.guitar.speed; // Guitar has its own speed
                 }
             });
         }
@@ -365,11 +425,11 @@
         }
 
         function startGame() {
-            if (isGameRunning) return;
+            if (isGameRunning || !allImagesLoaded) return; // Don't start if images not loaded
 
             // Apply selected skins before starting
-            currentDinoSkin = dinoSkins[dinoSkinSelect.value];
-            currentCactiSkin = cactiSkins[cactiSkinSelect.value];
+            currentDinoSkinDetails = dinoSkins[dinoSkinSelect.value];
+            currentCactiSkinDetails = cactiSkins[cactiSkinSelect.value];
             dino.reset(); // Reset dino properties based on new skin
 
             isGameRunning = true;
@@ -390,14 +450,15 @@
             ctx.fillStyle = "black";
             ctx.textAlign = "center";
             ctx.fillText("Game Over! Score: " + score, canvas.width / 2, canvas.height / 2);
-            ctx.fillText("Press Space or Start to play again", canvas.width / 2, canvas.height / 2 + 30);
-            startGameButton.disabled = false;
+            ctx.fillText("Press Space, Click, or Start to play again", canvas.width / 2, canvas.height / 2 + 30);
+            if (allImagesLoaded) startGameButton.disabled = false;
         }
 
         // Event Listeners
         document.addEventListener('keydown', (e) => {
-            if (e.code === 'Space' || e.key === ' ') {
-                e.preventDefault(); // Prevent page scroll on space
+            if (e.code === 'Space' || e.key === ' ' || e.key === 'ArrowUp') {
+                e.preventDefault(); 
+                if (!allImagesLoaded) return;
                 if (isGameRunning) {
                     dino.jump();
                 } else {
@@ -407,138 +468,49 @@
             }
         });
 
+        canvas.addEventListener('click', () => {
+            if (!allImagesLoaded) return;
+            if (isGameRunning) {
+                dino.jump();
+            } else {
+                startGameButton.disabled = true;
+                startGame();
+            }
+        });
+
         startGameButton.addEventListener('click', () => {
+            if (!allImagesLoaded) return;
             startGameButton.disabled = true;
             startGame();
         });
 
         // Update dino skin preview if changed when game not running
         dinoSkinSelect.addEventListener('change', () => {
-            currentDinoSkin = dinoSkins[dinoSkinSelect.value];
+            if (!allImagesLoaded) return;
+            currentDinoSkinDetails = dinoSkins[dinoSkinSelect.value];
             dino.reset(); // Update dino's size/position based on skin
             if (!isGameRunning) {
                 ctx.clearRect(0, 0, canvas.width, canvas.height);
                 dino.draw(); // Redraw dino with new skin
-                 ctx.font = "20px Arial";
-                ctx.fillStyle = "black";
-                ctx.textAlign = "center";
-                ctx.fillText("Press 'Start Game' or Space to begin", canvas.width/2, canvas.height/2);
+                if (allImagesLoaded) { // Only show prompt if images are ready
+                    ctx.font = "20px Arial";
+                    ctx.fillStyle = "black";
+                    ctx.textAlign = "center";
+                    ctx.fillText("Press 'Start Game', Space, or Click to begin", canvas.width/2, canvas.height/2);
+                }
             }
         });
          cactiSkinSelect.addEventListener('change', () => {
-            currentCactiSkin = cactiSkins[cactiSkinSelect.value];
+            if (!allImagesLoaded) return;
+            currentCactiSkinDetails = cactiSkins[cactiSkinSelect.value];
             // No visual preview change needed for cacti when game not running
         });
 
 
-        // Initial draw of dino and prompt
-        dino.draw();
-        ctx.font = "20px Arial";
-        ctx.fillStyle = "black";
-        ctx.textAlign = "center";
-        ctx.fillText("Press 'Start Game' or Space to begin", canvas.width/2, canvas.height/2);
-
-
-    </script>
-</body>
-</html>
-                }
-            });
-        }
-
-        function updateObstacles() {
-            frameCount++;
-            if (frameCount % obstacleSpawnInterval === 0) {
-                spawnObstacle();
-            }
-
-            for (let i = obstacles.length - 1; i >= 0; i--) {
-                obstacles[i].update();
-                obstacles[i].draw();
-
-                // Collision detection
-                if (
-                    dino.x < obstacles[i].x + obstacles[i].width &&
-                    dino.x + dino.width > obstacles[i].x &&
-                    dino.y < obstacles[i].y + obstacles[i].height &&
-                    dino.y + dino.height > obstacles[i].y
-                ) {
-                    // Collision detected
-                    gameOver();
-                    return;
-                }
-
-                // Remove off-screen obstacles
-                if (obstacles[i].x + obstacles[i].width < 0) {
-                    obstacles.splice(i, 1);
-                    score++;
-                    scoreDisplay.textContent = score;
-                }
-            }
-        }
-
-        function gameLoop() {
-            if (!isGameRunning) return;
-
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-            dino.update();
-            dino.draw();
-
-            updateObstacles();
-
-            animationFrameId = requestAnimationFrame(gameLoop);
-        }
-
-        function startGame() {
-            if (isGameRunning) return;
-            isGameRunning = true;
-            score = 0;
-            scoreDisplay.textContent = score;
-            obstacles = [];
-            frameCount = 0;
-            dino.y = dino.groundY - dino.height; // Reset dino position
-            dino.isJumping = false;
-            gameSpeed = 5; // Reset game speed
-            gameLoop();
-        }
-
-        function gameOver() {
-            isGameRunning = false;
-            cancelAnimationFrame(animationFrameId);
-            ctx.font = "30px Arial";
-            ctx.fillStyle = "black";
-            ctx.textAlign = "center";
-            ctx.fillText("Game Over!", canvas.width / 2, canvas.height / 2);
-            startGameButton.disabled = false;
-        }
-
-        // Event Listeners
-        document.addEventListener('keydown', (e) => {
-            if (e.code === 'Space' || e.key === ' ') {
-                if (isGameRunning) {
-                    dino.jump();
-                } else {
-                    // Start game on spacebar if not running, after initial button press
-                    if (!animationFrameId && obstacles.length === 0){ // Check if it's truly the first start
-                         startGame();
-                         startGameButton.disabled = true;
-                    }
-                }
-            }
-        });
-
-        startGameButton.addEventListener('click', () => {
-            startGameButton.disabled = true;
-            startGame();
-        });
-
-        // Initial prompt to start
-        ctx.font = "20px Arial";
-        ctx.fillStyle = "black";
-        ctx.textAlign = "center";
-        ctx.fillText("Press 'Start Game' or Space to begin", canvas.width/2, canvas.height/2);
-
+        // Initial Call to load images.
+        // The loadAllGameImages function will handle drawing the initial dino and prompt.
+        startGameButton.disabled = true; // Disable button until images are loaded
+        loadAllGameImages();
 
     </script>
 </body>
